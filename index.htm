@@ -295,7 +295,12 @@
             piecesGroup = new THREE.Group();
             cubeGroup.add(piecesGroup);
 
-            // O núcleo central não é necessário para um cubo 2x2
+            // Adiciona o núcleo central para preencher os vãos
+            const coreSize = pieceSize;
+            const coreGeometry = new THREE.BoxGeometry(coreSize, coreSize, coreSize);
+            const coreMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
+            const core = new THREE.Mesh(coreGeometry, coreMaterial);
+            cubeGroup.add(core);
 
             // Cores das faces do cubo mágico
             const colors = {
