@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cubo 3D Interativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            color: #fff;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            z-index: 100;
+            display:block;
+            padding: 10px;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        #timer-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            z-index: 101;
+        }
+        #stopwatch {
+            font-size: 32px;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+            margin-left: 15px;
+        }
+        .timer-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+            margin: 0 5px;
+        }
+        .timer-btn:hover {
+            color: #007bff;
+        }
+        #settings-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 101;
+            color: #fff;
+        }
+        #settings-modal, #results-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #2a2a2a;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 10px;
+            color: #fff;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+        }
+        .modal-content .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .modal-content .close-btn:hover,
+        .modal-content .close-btn:focus {
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .slider-container {
+            margin: 20px 0;
+        }
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 15px;
+            border-radius: 5px;
+            background: #444;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+        .slider:hover {
+            opacity: 1;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .modal-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+        }
+        .modal-buttons button#shuffle-btn {
+            background-color: #28a745;
+        }
+        .modal-buttons button#reset-btn {
+            background-color: #dc3545;
+        }
+        #results-modal .modal-content {
+            text-align: center;
+        }
+        #final-time {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00; /* Green for success */
+            margin: 10px 0;
+        }
+        #close-results-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="timer-container">
+        <button id="play-pause-btn" class="timer-btn"><i class="fas fa-play"></i></button>
+        <button id="timer-reset-btn" class="timer-btn"><i class="fas fa-sync-alt"></i></button>
+        <div id="stopwatch">00:00.00</div>
+    </div>
+    <div id="settings-btn">
+        <i class="fas fa-cog"></i>
+    </div>
+
+    <div id="results-modal" style="display: none;">
+        <div class="modal-content">
+            <p>Seu tempo foi:</p>
+            <p><span id="final-time"></span></p>
+            <button id="close-results-btn">Fechar</button>
+        </div>
+    </div>
+
+    <div id="settings-modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Configurações</h2>
+            <div class="modal-buttons">
+                <button id="shuffle-btn">Embaralhar</button>
+                <button id="reset-btn">Reiniciar</button>
+            </div>
+            <div class="slider-container">
+                <label for="zoom-slider">Zoom</label>
+                <input type="range" min="4" max="15" value="8" class="slider" id="zoom-slider">
+            </div>
+            <div class="slider-container">
+                <label for="shuffle-slider">Movimentos para Embaralhar: <span id="shuffle-moves-value">20</span></label>
+                <input type="range" min="1" max="30" value="20" class="slider" id="shuffle-slider">
+            </div>
+        </div>
+    </div>
+
+    <!-- Importmap para Three.js e OrbitControls -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Variáveis Globais ---
+        let scene, camera, renderer, controls;
+        let cubeGroup, piecesGroup;
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const pieceSize = 1;
+        const gap = 0.05;
+        const totalSize = pieceSize + gap;
+
+        // Estado da interação
+        let isDragging = false;
+        let dragStartPoint = { x: 0, y: 0 };
+        let intersectedObject = null;
+        let isAnimating = false;
+        let hasInteracted = false; // Previne o salvamento de estado antes da interação
+        let isShuffling = false; // Novo: para controlar o estado de embaralhamento
+
+        // Áudio
+        let audioCtx;
+
+        // Estado do cronômetro
+        let timerRunning = false;
+        let timerWasRunningOnHide = false; // Novo: para controlar o estado da visibilidade
+        let startTime = 0;
+        let elapsedTime = 0;
+        let timerInterval;
+        const stopwatchElement = document.getElementById('stopwatch');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playPauseIcon = playPauseBtn.querySelector('i');
+
+
+        // --- Configuração Inicial ---
+        function init() {
+            // Cena
+            scene = new THREE.Scene();
+            
+            // Câmera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(4, 4, 6);
+            camera.lookAt(scene.position);
+
+            // Renderizador
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            // Controles de Órbita (para girar o cubo)
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+            controls.rotateSpeed = 0.7;
+            controls.enablePan = false;
+            controls.enableZoom = false;
+            
+
+            // Criar o cubo
+            createRubiksCube();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            renderer.domElement.addEventListener('pointerdown', onPointerDown, false);
+            renderer.domElement.addEventListener('pointermove', onPointerMove, false);
+            renderer.domElement.addEventListener('pointerup', onPointerUp, false);
+            document.addEventListener('visibilitychange', handleVisibilityChange, false);
+            window.addEventListener('beforeunload', saveState, false); // Salva o estado ao fechar a página
+
+            // Iniciar loop de animação
+            animate();
+        }
+
+        // --- Criação do Cubo ---
+        function createRubiksCube() {
+            cubeGroup = new THREE.Group();
+            piecesGroup = new THREE.Group();
+            cubeGroup.add(piecesGroup);
+
+            // Adiciona o núcleo central para preencher os vãos
+            const coreSize = pieceSize + 2 * gap;
+            const coreGeometry = new THREE.BoxGeometry(coreSize, coreSize, coreSize);
+            const coreMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
+            const core = new THREE.Mesh(coreGeometry, coreMaterial);
+            cubeGroup.add(core);
+            
+            // Cores das faces do cubo mágico
+            const colors = {
+                front:  0xff0000, // Vermelho
+                back:   0xffa500, // Laranja
+                up:     0xffffff, // Branco
+                down:   0xffff00, // Amarelo
+                left:   0x00ff00, // Verde
+                right:  0x0000ff  // Azul
+            };
+
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    for (let z = -1; z <= 1; z++) {
+                        // Não cria a peça central invisível
+                        if (x === 0 && y === 0 && z === 0) continue;
+
+                        const materials = [
+                            (x === 1) ? new THREE.MeshBasicMaterial({ color: colors.right }) : new THREE.MeshBasicMaterial({ color: 0x1a1a1a }), // right
+                            (x === -1) ? new THREE.MeshBasicMaterial({ color: colors.left }) : new THREE.MeshBasicMaterial({ color: 0x1a1a1a }), // left
+                            (y === 1) ? new THREE.MeshBasicMaterial({ color: colors.up }) : new THREE.MeshBasicMaterial({ color: 0x1a1a1a }), // up
+                            (y === -1) ? new THREE.MeshBasicMaterial({ color: colors.down }) : new THREE.MeshBasicMaterial({ color: 0x1a1a1a }), // down
+                            (z === 1) ? new THREE.MeshBasicMaterial({ color: colors.front }) : new THREE.MeshBasicMaterial({ color: 0x1a1a1a }), // front
+                            (z === -1) ? new THREE.MeshBasicMaterial({ color: colors.back }) : new THREE.MeshBasicMaterial({ color: 0x1a1a1a })  // back
+                        ];
+
+                        const geometry = new THREE.BoxGeometry(pieceSize, pieceSize, pieceSize);
+                        const piece = new THREE.Mesh(geometry, materials);
+                        piece.position.set(x * totalSize, y * totalSize, z * totalSize);
+                        // Assign a unique ID based on initial position for stable state saving
+                        piece.userData.id = `${x}_${y}_${z}`;
+                        piecesGroup.add(piece);
+                    }
+                }
+            }
+            scene.add(cubeGroup);
+            loadState(); // Carrega o estado salvo ao criar o cubo
+        }
+
+        // --- Lógica de Interação ---
+        function onPointerDown(event) {
+            if (isAnimating) return;
+
+            // Initialize AudioContext on first user gesture
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(piecesGroup.children);
+
+            if (intersects.length > 0) {
+                isDragging = true;
+                controls.enabled = false;
+                intersectedObject = {
+                    object: intersects[0].object,
+                    face: intersects[0].face
+                };
+                dragStartPoint = { x: event.clientX, y: event.clientY };
+            }
+        }
+
+        function onPointerMove(event) {
+            if (!isDragging || isAnimating) return;
+            // A lógica de rotação acontece em onPointerUp para simplificar
+        }
+
+        function onPointerUp(event) {
+            if (!isDragging || isAnimating) {
+                controls.enabled = true;
+                return;
+            }
+
+            const dragEndPoint = { x: event.clientX, y: event.clientY };
+            const dragVector = { 
+                x: dragEndPoint.x - dragStartPoint.x, 
+                y: dragEndPoint.y - dragStartPoint.y 
+            };
+
+            // Se o arrasto for muito pequeno, ignora
+            if (Math.abs(dragVector.x) < 10 && Math.abs(dragVector.y) < 10) {
+                isDragging = false;
+                controls.enabled = true;
+                return;
+            }
+            
+            determineAndRotateSlice(dragVector);
+
+            isDragging = false;
+            // Os controles serão reativados após a animação
+        }
+
+function determineAndRotateSlice(dragVector) {
+    if (!intersectedObject) return;
+
+    const piece = intersectedObject.object;
+    const faceNormal = intersectedObject.face.normal.clone();
+
+    // 1. Transformar a normal da face para o espaço do mundo
+    const worldNormal = faceNormal.clone().transformDirection(piece.matrixWorld).round();
+
+    // 2. Determinar a direção do arrasto no espaço da tela
+    const screenDragVector = new THREE.Vector2(dragVector.x, dragVector.y).normalize();
+
+    // 3. Determinar os eixos da câmera no espaço do mundo
+    const cameraRight = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const cameraUp = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+
+    // 4. Mapear o arrasto 2D da tela para um vetor de movimento 3D no mundo
+    const worldDragVector = cameraRight.multiplyScalar(screenDragVector.x).add(
+        cameraUp.multiplyScalar(-screenDragVector.y) // Y é invertido no espaço da tela
+    ).normalize();
+
+    // 5. Determinar o eixo de rotação
+    // O eixo de rotação é perpendicular tanto à normal da face quanto à direção do arrasto no mundo
+    let rotationAxis = new THREE.Vector3().crossVectors(worldNormal, worldDragVector).normalize();
+
+    // 6. "Travar" o eixo ao eixo principal mais próximo (X, Y ou Z)
+    const maxComponent = Math.max(Math.abs(rotationAxis.x), Math.abs(rotationAxis.y), Math.abs(rotationAxis.z));
+    if (Math.abs(rotationAxis.x) === maxComponent) {
+        rotationAxis.set(Math.sign(rotationAxis.x), 0, 0);
+    } else if (Math.abs(rotationAxis.y) === maxComponent) {
+        rotationAxis.set(0, Math.sign(rotationAxis.y), 0);
+    } else {
+        rotationAxis.set(0, 0, Math.sign(rotationAxis.z));
+    }
+
+    // 7. Determinar a direção (ângulo) da rotação
+    // Projetamos o vetor de arrasto mundial no plano perpendicular ao eixo de rotação
+    // e verificamos se ele está alinhado com a normal da face (ou oposto a ela)
+    const projectedDrag = worldDragVector.clone();
+    const cross = new THREE.Vector3().crossVectors(rotationAxis, worldNormal);
+    const dot = projectedDrag.dot(cross);
+    const angle = (Math.PI / 2) * Math.sign(dot);
+
+
+    // 8. Obter a fatia e animar
+    const slice = getSlice(rotationAxis, piece.position);
+    if (slice.length > 0) {
+        animateRotation(slice, rotationAxis, angle);
+    } else {
+        // Se nenhuma fatia for encontrada, reativa os controles
+        controls.enabled = true;
+    }
+}
+
+        function getSlice(axis, position) {
+            const slice = [];
+            piecesGroup.children.forEach(child => {
+                if (Math.abs(child.position.dot(axis) - position.dot(axis)) < 0.1) {
+                    slice.push(child);
+                }
+            });
+            return slice;
+        }
+
+        function playTurnSound() {
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            const duration = 0.08;
+
+            // --- Tonal Component (the "click") ---
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(600, now); // Frequência inicial mais baixa
+            gainNode.gain.setValueAtTime(0.3, now);
+            oscillator.frequency.exponentialRampToValueAtTime(200, now + duration); // Frequência final mais baixa
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+            // --- Noise Component (the "scrape") ---
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = buffer;
+            const noiseGain = audioCtx.createGain();
+            noiseSource.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+            noiseGain.gain.setValueAtTime(0.05, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+            // --- Start and Stop ---
+            oscillator.start(now);
+            noiseSource.start(now);
+            oscillator.stop(now + duration);
+            noiseSource.stop(now + duration);
+        }
+
+        function playSolvedSound() {
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            const notes = [659.25, 783.99, 987.77, 1318.51]; // E5, G5, B5, E6
+            const noteDuration = 0.1;
+
+            notes.forEach((frequency, index) => {
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(frequency, now + index * noteDuration);
+                gainNode.gain.setValueAtTime(0.2, now + index * noteDuration);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + (index + 1) * noteDuration);
+
+                oscillator.start(now + index * noteDuration);
+                oscillator.stop(now + (index + 1) * noteDuration);
+            });
+        }
+
+function animateRotation(slice, axis, angle, onComplete) {
+    hasInteracted = true; // Registra que o usuário interagiu com o cubo
+    // Se o modal de resultados estiver aberto, esconde e reseta o timer para um novo jogo
+    const resultsModal = document.getElementById('results-modal');
+    if (resultsModal.style.display === 'flex') {
+        resultsModal.style.display = 'none';
+        resetTimer();
+    }
+
+    if (isAnimating) {
+        if (onComplete) onComplete();
+        return;
+    }
+            isAnimating = true;
+
+            playTurnSound();
+
+            if (!isShuffling) { // Só inicia o timer se não estiver embaralhando
+                startTimer();
+            }
+
+            const pivot = new THREE.Group();
+            scene.add(pivot);
+
+            slice.forEach(piece => {
+                pivot.attach(piece);
+            });
+
+            const duration = 300; // ms
+            const startTime = Date.now();
+            
+            function step() {
+                const animationElapsedTime = Date.now() - startTime;
+                const progress = Math.min(animationElapsedTime / duration, 1);
+                
+                // Ease-out-quad
+                const easedProgress = progress * (2 - progress);
+                
+                pivot.setRotationFromAxisAngle(axis, angle * easedProgress);
+
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    // Finaliza a rotação
+                    pivot.setRotationFromAxisAngle(axis, angle);
+                    
+                    // Reposiciona as peças de volta no grupo principal
+                    while(pivot.children.length > 0) {
+                        const piece = pivot.children[0];
+                        // Atualiza a matriz do objeto antes de re-anexar
+                        piece.updateMatrixWorld();
+                        piecesGroup.attach(piece);
+
+                        // Arredonda a posição para a grade com vãos
+                        piece.position.x = Math.round(piece.position.x / totalSize) * totalSize;
+                        piece.position.y = Math.round(piece.position.y / totalSize) * totalSize;
+                        piece.position.z = Math.round(piece.position.z / totalSize) * totalSize;
+
+                        // Arredonda a rotação para o ângulo de 90 graus mais próximo
+                        const euler = new THREE.Euler().setFromQuaternion(piece.quaternion, 'XYZ');
+                        euler.x = Math.round(euler.x / (Math.PI / 2)) * (Math.PI / 2);
+                        euler.y = Math.round(euler.y / (Math.PI / 2)) * (Math.PI / 2);
+                        euler.z = Math.round(euler.z / (Math.PI / 2)) * (Math.PI / 2);
+                        piece.quaternion.setFromEuler(euler);
+                    }
+                    
+                    scene.remove(pivot);
+                    isAnimating = false;
+                    saveState(); // Salva o estado após a rotação
+
+                    // A verificação do tempo foi removida para garantir que a conclusão seja sempre registrada.
+                    if (checkIfSolved()) {
+                        stopTimer(); // Para o cronômetro e atualiza o `elapsedTime` global.
+                        playSolvedSound();
+                        document.getElementById('final-time').textContent = formatTime(elapsedTime); // Usa o `elapsedTime` global.
+                        // Adiciona um pequeno atraso para garantir que o som seja ouvido antes de o modal bloquear a thread principal.
+                        setTimeout(() => {
+                            document.getElementById('results-modal').style.display = 'flex';
+                        }, 100);
+                    } else if (!isShuffling) {
+                        controls.enabled = true; // Só reativa se o cubo não estiver resolvido E não estiver embaralhando
+                    }
+
+                    if (onComplete) {
+                        onComplete();
+                    }
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        // --- Funções Utilitárias ---
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- Loop de Animação ---
+        function animate() {
+            requestAnimationFrame(animate);
+            updateTimer();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- Lógica do Cronômetro ---
+        function startTimer() {
+            if (!timerRunning) {
+                timerRunning = true;
+                startTime = Date.now() - elapsedTime;
+                playPauseIcon.classList.remove('fa-play');
+                playPauseIcon.classList.add('fa-pause');
+            }
+        }
+
+        function stopTimer() {
+            if (timerRunning) {
+                timerRunning = false;
+                elapsedTime = Date.now() - startTime;
+                playPauseIcon.classList.remove('fa-pause');
+                playPauseIcon.classList.add('fa-play');
+            }
+        }
+
+        function resetTimer() {
+            stopTimer();
+            elapsedTime = 0;
+            updateStopwatchDisplay();
+        }
+
+        function updateTimer() {
+            if (timerRunning) {
+                elapsedTime = Date.now() - startTime;
+                updateStopwatchDisplay();
+            }
+        }
+
+        function formatTime(time) {
+            const pad = (num, size) => ('00' + num).slice(size * -1);
+            const centiseconds = Math.floor((time % 1000) / 10);
+            const seconds = Math.floor(time / 1000) % 60;
+            const minutes = Math.floor(time / 60000) % 60;
+            return `${pad(minutes, 2)}:${pad(seconds, 2)}.${pad(centiseconds, 2)}`;
+        }
+
+        function updateStopwatchDisplay() {
+            stopwatchElement.textContent = formatTime(elapsedTime);
+        }
+
+        function handleVisibilityChange() {
+            if (document.hidden) {
+                // Salva o estado do timer antes de pausar
+                timerWasRunningOnHide = timerRunning;
+                stopTimer();
+            } else {
+                // Só retoma o timer se ele estava rodando antes de a aba ficar oculta
+                if (timerWasRunningOnHide) {
+                   startTimer();
+                }
+            }
+        }
+
+
+        // --- Funções de Estado ---
+        function getPieceAt(gridPosition) {
+            // Encontra uma peça numa localização específica da grelha (ex: [1, 0, 0])
+            for (const piece of piecesGroup.children) {
+                const currentGridX = Math.round(piece.position.x / totalSize);
+                const currentGridY = Math.round(piece.position.y / totalSize);
+                const currentGridZ = Math.round(piece.position.z / totalSize);
+                if (currentGridX === gridPosition.x && currentGridY === gridPosition.y && currentGridZ === gridPosition.z) {
+                    return piece;
+                }
+            }
+            return null;
+        }
+
+        function getFaceColor(piece, worldDirection) {
+            // Esta função determina a cor da face de uma peça que aponta numa determinada direção do mundo.
+            if (!piece) return null;
+
+            // Transforma a direção do mundo para a direção local do objeto para determinar qual a face que está a ser "vista".
+            const localDirection = new THREE.Vector3();
+            piece.worldToLocal(localDirection.copy(piece.position).add(worldDirection));
+            localDirection.normalize();
+
+            // As normais das faces locais da geometria da peça
+            const normals = [
+                new THREE.Vector3(1, 0, 0),  // Direita (+X) -> Índice de material 0
+                new THREE.Vector3(-1, 0, 0), // Esquerda (-X) -> Índice de material 1
+                new THREE.Vector3(0, 1, 0),  // Cima (+Y) -> Índice de material 2
+                new THREE.Vector3(0, -1, 0), // Baixo (-Y) -> Índice de material 3
+                new THREE.Vector3(0, 0, 1),  // Frente (+Z) -> Índice de material 4
+                new THREE.Vector3(0, 0, -1)  // Trás (-Z) -> Índice de material 5
+            ];
+
+            let bestMatchIndex = -1;
+            let maxDot = -Infinity;
+
+            // Encontra a normal local que melhor corresponde à direção da câmara
+            for (let i = 0; i < normals.length; i++) {
+                const dot = localDirection.dot(normals[i]);
+                if (dot > maxDot) {
+                    maxDot = dot;
+                    bestMatchIndex = i;
+                }
+            }
+
+            // Retorna a cor do material correspondente se for encontrado
+            if (bestMatchIndex !== -1 && piece.material[bestMatchIndex]) {
+                return piece.material[bestMatchIndex].color.getHex();
+            }
+            return null;
+        }
+
+        function checkIfSolved() {
+            // Define as 6 faces do cubo pela sua normal, eixo e camada
+            const faces = [
+                { normal: new THREE.Vector3(1, 0, 0), axis: 'x', layer: 1 },
+                { normal: new THREE.Vector3(-1, 0, 0), axis: 'x', layer: -1 },
+                { normal: new THREE.Vector3(0, 1, 0), axis: 'y', layer: 1 },
+                { normal: new THREE.Vector3(0, -1, 0), axis: 'y', layer: -1 },
+                { normal: new THREE.Vector3(0, 0, 1), axis: 'z', layer: 1 },
+                { normal: new THREE.Vector3(0, 0, -1), axis: 'z', layer: -1 }
+            ];
+
+            for (const face of faces) {
+                // 1. Encontrar a peça central e obter a cor alvo para a face
+                const centerPiecePosition = new THREE.Vector3();
+                centerPiecePosition[face.axis] = face.layer;
+                const centerPiece = getPieceAt(centerPiecePosition);
+                const targetColor = getFaceColor(centerPiece, face.normal);
+
+                // Se não for possível determinar a cor (condição de erro), considera como não resolvido
+                if (targetColor === null) return false;
+
+                // 2. Iterar sobre todas as 9 posições da face para verificar se correspondem à cor alvo
+                const otherAxes = ['x', 'y', 'z'].filter(ax => ax !== face.axis);
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        const piecePosition = new THREE.Vector3();
+                        piecePosition[face.axis] = face.layer;
+                        piecePosition[otherAxes[0]] = i;
+                        piecePosition[otherAxes[1]] = j;
+
+                        const piece = getPieceAt(piecePosition);
+                        const pieceColor = getFaceColor(piece, face.normal);
+
+                        // Se qualquer cor de peça não corresponder à cor alvo, o cubo não está resolvido
+                        if (pieceColor !== targetColor) {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            // Se todas as 6 faces forem monocromáticas, o cubo está resolvido
+            return true;
+        }
+
+        function saveState() {
+            // Só salva o estado se o usuário tiver interagido com o cubo,
+            // para evitar que o estado inicial (tempo 0) sobrescreva um estado salvo ao recarregar.
+            if (!hasInteracted) return;
+
+            const state = {
+                pieces: piecesGroup.children.map(piece => ({
+                    id: piece.userData.id,
+                    position: piece.position.toArray(),
+                    quaternion: piece.quaternion.toArray()
+                })),
+                elapsedTime: elapsedTime
+            };
+            localStorage.setItem('rubiksCubeState', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const savedStateJSON = localStorage.getItem('rubiksCubeState');
+            if (!savedStateJSON) return;
+
+            const savedData = JSON.parse(savedStateJSON);
+            let piecesState;
+
+            // Compatibilidade com a versão anterior
+            if (Array.isArray(savedData)) {
+                piecesState = savedData;
+                elapsedTime = 0; // Estado antigo não tinha tempo salvo
+            } else {
+                piecesState = savedData.pieces;
+                elapsedTime = savedData.elapsedTime || 0;
+            }
+
+            if (piecesState) {
+                const stateMap = new Map(piecesState.map(s => [s.id, s]));
+                piecesGroup.children.forEach(piece => {
+                    const pieceState = stateMap.get(piece.userData.id);
+                    if (pieceState) {
+                        piece.position.fromArray(pieceState.position);
+                        piece.quaternion.fromArray(pieceState.quaternion);
+                        // Força a atualização da matriz do objeto para refletir as novas propriedades.
+                        piece.updateMatrixWorld(true);
+                    }
+                });
+            }
+
+            updateStopwatchDisplay();
+
+            // Após carregar o estado, verifica se o cubo já está resolvido.
+            // A verificação de tempo previne que o modal apareça na primeira visita.
+            if (checkIfSolved() && elapsedTime > 0) {
+                stopTimer(); // Garante que o estado do botão play/pause esteja correto.
+                document.getElementById('final-time').textContent = formatTime(elapsedTime);
+                document.getElementById('results-modal').style.display = 'flex';
+                controls.enabled = false; // Desativa os controles, pois o jogo acabou.
+            }
+        }
+
+        // --- Iniciar ---
+        init();
+
+        // --- Lógica do Modal de Configurações ---
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsBtn = document.getElementById('settings-btn');
+        const closeBtn = document.querySelector('.close-btn');
+
+        settingsBtn.onclick = function() {
+            settingsModal.style.display = 'flex';
+        }
+
+        closeBtn.onclick = function() {
+            settingsModal.style.display = 'none';
+        }
+
+        // --- Lógica do Modal de Resultados ---
+        const resultsModal = document.getElementById('results-modal');
+        const closeResultsBtn = document.getElementById('close-results-btn');
+
+        function closeResultsModal() {
+            resultsModal.style.display = 'none';
+            resetTimer();
+            controls.enabled = true; // Reativa os controles após fechar o modal
+        }
+
+        closeResultsBtn.onclick = closeResultsModal;
+
+        // Atualiza o fechamento de modais para incluir o de resultados
+        window.onclick = function(event) {
+            if (event.target == settingsModal) {
+                settingsModal.style.display = 'none';
+            }
+            if (event.target == resultsModal) {
+                closeResultsModal();
+            }
+        }
+
+        function saveSettings() {
+            const settings = {
+                zoom: zoomSlider.value,
+                shuffleMoves: shuffleSlider.value
+            };
+            localStorage.setItem('rubiksCubeSettings', JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('rubiksCubeSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                if (settings.zoom) {
+                    zoomSlider.value = settings.zoom;
+                    camera.position.setLength(settings.zoom);
+                }
+                if (settings.shuffleMoves) {
+                    shuffleSlider.value = settings.shuffleMoves;
+                    shuffleMovesValue.textContent = settings.shuffleMoves;
+                }
+            }
+        }
+
+        // --- Lógica do Zoom ---
+        const zoomSlider = document.getElementById('zoom-slider');
+        zoomSlider.addEventListener('input', (event) => {
+            const distance = event.target.value;
+            camera.position.setLength(distance);
+            saveSettings();
+        });
+
+        // --- Lógica do Shuffle ---
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const shuffleSlider = document.getElementById('shuffle-slider');
+        const shuffleMovesValue = document.getElementById('shuffle-moves-value');
+
+        shuffleSlider.addEventListener('input', (event) => {
+            shuffleMovesValue.textContent = event.target.value;
+            saveSettings();
+        });
+
+        window.shuffleCube = shuffleCube; // Expor para o teste
+        shuffleBtn.addEventListener('click', () => {
+            const moves = parseInt(shuffleSlider.value, 10);
+            shuffleCube(moves);
+            settingsModal.style.display = 'none'; // Fecha o modal
+        });
+
+        function shuffleCube(moves) {
+            return new Promise((resolve) => {
+                if (isAnimating) {
+                    resolve();
+                    return;
+                }
+                // Limpa o estado anterior para evitar carregar um cubo corrompido em caso de atualização.
+                localStorage.removeItem('rubiksCubeState');
+                resetTimer(); // Zera o cronômetro ao embaralhar
+                isShuffling = true; // Inicia o modo de embaralhamento
+                controls.enabled = false; // Desativa os controles durante o embaralhamento
+
+                let moveCount = 0;
+
+                function performRandomMove() {
+                    if (moveCount >= moves) {
+                        controls.enabled = true; // Reativa os controles ao final
+                        isShuffling = false; // Finaliza o modo de embaralhamento
+                        saveState(); // Salva o estado final
+                        resolve(); // Resolve a promise quando o embaralhamento terminar
+                        return;
+                    }
+
+                    const axes = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+                    const axis = axes[Math.floor(Math.random() * axes.length)];
+
+                    const sliceIndices = [-1, 0, 1];
+                    const sliceIndex = sliceIndices[Math.floor(Math.random() * sliceIndices.length)];
+
+                    // Posição para selecionar a fatia
+                    const position = axis.clone().multiplyScalar(sliceIndex * totalSize);
+
+                    const slice = getSlice(axis, position);
+
+                    const angles = [Math.PI / 2, -Math.PI / 2];
+                    const angle = angles[Math.floor(Math.random() * angles.length)];
+
+                    moveCount++;
+
+                    // Anima a rotação e chama o próximo movimento ao completar
+                    animateRotation(slice, axis, angle, performRandomMove);
+                }
+
+                performRandomMove();
+            });
+        }
+
+        // --- Lógica do Reset ---
+        const resetBtn = document.getElementById('reset-btn');
+
+        function fullReset() {
+            if (isAnimating) return;
+
+            hasInteracted = true; // O reset é uma interação
+            // Zera o cronômetro
+            resetTimer();
+
+            // Remove o estado salvo do cache
+            localStorage.removeItem('rubiksCubeState');
+
+            // Retorna as peças para a posição e rotação originais
+            const identityQuaternion = new THREE.Quaternion();
+            piecesGroup.children.forEach(piece => {
+                const idCoords = piece.userData.id.split('_').map(Number);
+                const originalPosition = new THREE.Vector3(
+                    idCoords[0] * totalSize,
+                    idCoords[1] * totalSize,
+                    idCoords[2] * totalSize
+                );
+                piece.position.copy(originalPosition);
+                piece.quaternion.copy(identityQuaternion);
+            });
+
+            // Fecha o modal de configurações
+            settingsModal.style.display = 'none';
+        }
+
+        resetBtn.addEventListener('click', fullReset);
+
+        // --- Lógica dos Botões do Cronômetro ---
+        const timerResetBtn = document.getElementById('timer-reset-btn');
+
+        playPauseBtn.addEventListener('click', () => {
+            // Não permite pausar/iniciar durante uma animação
+            if (isAnimating) return;
+
+            if (timerRunning) {
+                stopTimer();
+            } else {
+                // Inicia o cronômetro independentemente do estado do cubo
+                startTimer();
+            }
+        });
+
+        timerResetBtn.addEventListener('click', resetTimer);
+
+        window.checkIfSolved = checkIfSolved; // Expor para o teste
+        window.getSlice = getSlice; // Expor para o teste
+        window.animateRotation = animateRotation; // Expor para o teste
+        window.THREE = THREE; // Expor para o teste
+
+        // Função de utilitário para testes, para colocar o cubo em um estado quase resolvido
+        window.setupAlmostSolvedState = () => {
+            fullReset(); // Começa com um cubo resolvido
+
+            // Gira uma única fatia para fora do lugar
+            const axis = new THREE.Vector3(1, 0, 0); // Eixo X
+            const position = new THREE.Vector3(1 * totalSize, 0, 0);
+            const slice = getSlice(axis, position);
+            const angle = Math.PI / 2;
+
+            // Gira a fatia instantaneamente, sem animação
+            const pivot = new THREE.Group();
+            scene.add(pivot);
+            slice.forEach(p => pivot.attach(p));
+            pivot.setRotationFromAxisAngle(axis, angle);
+
+            while(pivot.children.length > 0) {
+                const piece = pivot.children[0];
+                piece.updateMatrixWorld();
+                piecesGroup.attach(piece);
+                piece.position.x = Math.round(piece.position.x / totalSize) * totalSize;
+                piece.position.y = Math.round(piece.position.y / totalSize) * totalSize;
+                piece.position.z = Math.round(piece.position.z / totalSize) * totalSize;
+                const euler = new THREE.Euler().setFromQuaternion(piece.quaternion, 'XYZ');
+                euler.x = Math.round(euler.x / (Math.PI / 2)) * (Math.PI / 2);
+                euler.y = Math.round(euler.y / (Math.PI / 2)) * (Math.PI / 2);
+                euler.z = Math.round(euler.z / (Math.PI / 2)) * (Math.PI / 2);
+                piece.quaternion.setFromEuler(euler);
+            }
+            scene.remove(pivot);
+            hasInteracted = true; // Marca como interagido para permitir o salvamento
+            saveState();
+        };
+
+        loadSettings(); // Carrega as configurações ao final de tudo
+    </script>
+</body>
+</html>
