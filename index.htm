@@ -570,9 +570,10 @@ function animateRotation(slice, axis, angle, onComplete) {
                         piecesGroup.attach(piece);
 
                         // Arredonda a posição para a grade com vãos
-                        piece.position.x = Math.round(piece.position.x / totalSize) * totalSize;
-                        piece.position.y = Math.round(piece.position.y / totalSize) * totalSize;
-                        piece.position.z = Math.round(piece.position.z / totalSize) * totalSize;
+                        const offset = (pieceSize + gap) / 2;
+                        piece.position.x = Math.round(piece.position.x / offset) * offset;
+                        piece.position.y = Math.round(piece.position.y / offset) * offset;
+                        piece.position.z = Math.round(piece.position.z / offset) * offset;
 
                         // Arredonda a rotação para o ângulo de 90 graus mais próximo
                         const euler = new THREE.Euler().setFromQuaternion(piece.quaternion, 'XYZ');
