@@ -253,7 +253,7 @@
         function init() {
             // Cena
             scene = new THREE.Scene();
-            
+
             // Câmera
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(4, 4, 6);
@@ -272,7 +272,7 @@
             controls.rotateSpeed = 0.7;
             controls.enablePan = false;
             controls.enableZoom = false;
-            
+
 
             // Criar o cubo
             createRubiksCube();
@@ -295,13 +295,8 @@
             piecesGroup = new THREE.Group();
             cubeGroup.add(piecesGroup);
 
-            // Adiciona o núcleo central para preencher os vãos
-            const coreSize = pieceSize + 2 * gap;
-            const coreGeometry = new THREE.BoxGeometry(coreSize, coreSize, coreSize);
-            const coreMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
-            const core = new THREE.Mesh(coreGeometry, coreMaterial);
-            cubeGroup.add(core);
-            
+            // O núcleo central não é necessário para um cubo 2x2
+
             // Cores das faces do cubo mágico
             const colors = {
                 front:  0xff0000, // Vermelho
@@ -312,12 +307,11 @@
                 right:  0x0000ff  // Azul
             };
 
-            for (let x = -1; x <= 1; x++) {
-                for (let y = -1; y <= 1; y++) {
-                    for (let z = -1; z <= 1; z++) {
-                        // Não cria a peça central invisível
-                        if (x === 0 && y === 0 && z === 0) continue;
+            const offset = (pieceSize + gap) / 2;
 
+            for (let x = -1; x <= 1; x += 2) {
+                for (let y = -1; y <= 1; y += 2) {
+                    for (let z = -1; z <= 1; z += 2) {
                         const materials = [
                             (x === 1) ? new THREE.MeshBasicMaterial({ color: colors.right }) : new THREE.MeshBasicMaterial({ color: 0x1a1a1a }), // right
                             (x === -1) ? new THREE.MeshBasicMaterial({ color: colors.left }) : new THREE.MeshBasicMaterial({ color: 0x1a1a1a }), // left
@@ -329,7 +323,7 @@
 
                         const geometry = new THREE.BoxGeometry(pieceSize, pieceSize, pieceSize);
                         const piece = new THREE.Mesh(geometry, materials);
-                        piece.position.set(x * totalSize, y * totalSize, z * totalSize);
+                        piece.position.set(x * offset, y * offset, z * offset);
                         // Assign a unique ID based on initial position for stable state saving
                         piece.userData.id = `${x}_${y}_${z}`;
                         piecesGroup.add(piece);
@@ -378,9 +372,9 @@
             }
 
             const dragEndPoint = { x: event.clientX, y: event.clientY };
-            const dragVector = { 
-                x: dragEndPoint.x - dragStartPoint.x, 
-                y: dragEndPoint.y - dragStartPoint.y 
+            const dragVector = {
+                x: dragEndPoint.x - dragStartPoint.x,
+                y: dragEndPoint.y - dragStartPoint.y
             };
 
             // Se o arrasto for muito pequeno, ignora
@@ -389,7 +383,7 @@
                 controls.enabled = true;
                 return;
             }
-            
+
             determineAndRotateSlice(dragVector);
 
             isDragging = false;
@@ -552,14 +546,14 @@ function animateRotation(slice, axis, angle, onComplete) {
 
             const duration = 300; // ms
             const startTime = Date.now();
-            
+
             function step() {
                 const animationElapsedTime = Date.now() - startTime;
                 const progress = Math.min(animationElapsedTime / duration, 1);
-                
+
                 // Ease-out-quad
                 const easedProgress = progress * (2 - progress);
-                
+
                 pivot.setRotationFromAxisAngle(axis, angle * easedProgress);
 
                 if (progress < 1) {
@@ -567,7 +561,7 @@ function animateRotation(slice, axis, angle, onComplete) {
                 } else {
                     // Finaliza a rotação
                     pivot.setRotationFromAxisAngle(axis, angle);
-                    
+
                     // Reposiciona as peças de volta no grupo principal
                     while(pivot.children.length > 0) {
                         const piece = pivot.children[0];
@@ -587,7 +581,7 @@ function animateRotation(slice, axis, angle, onComplete) {
                         euler.z = Math.round(euler.z / (Math.PI / 2)) * (Math.PI / 2);
                         piece.quaternion.setFromEuler(euler);
                     }
-                    
+
                     scene.remove(pivot);
                     isAnimating = false;
                     saveState(); // Salva o estado após a rotação
@@ -688,11 +682,12 @@ function animateRotation(slice, axis, angle, onComplete) {
 
         // --- Funções de Estado ---
         function getPieceAt(gridPosition) {
+            const offset = (pieceSize + gap) / 2;
             // Encontra uma peça numa localização específica da grelha (ex: [1, 0, 0])
             for (const piece of piecesGroup.children) {
-                const currentGridX = Math.round(piece.position.x / totalSize);
-                const currentGridY = Math.round(piece.position.y / totalSize);
-                const currentGridZ = Math.round(piece.position.z / totalSize);
+                const currentGridX = Math.round(piece.position.x / offset);
+                const currentGridY = Math.round(piece.position.y / offset);
+                const currentGridZ = Math.round(piece.position.z / offset);
                 if (currentGridX === gridPosition.x && currentGridY === gridPosition.y && currentGridZ === gridPosition.z) {
                     return piece;
                 }
@@ -750,19 +745,12 @@ function animateRotation(slice, axis, angle, onComplete) {
             ];
 
             for (const face of faces) {
-                // 1. Encontrar a peça central e obter a cor alvo para a face
-                const centerPiecePosition = new THREE.Vector3();
-                centerPiecePosition[face.axis] = face.layer;
-                const centerPiece = getPieceAt(centerPiecePosition);
-                const targetColor = getFaceColor(centerPiece, face.normal);
-
-                // Se não for possível determinar a cor (condição de erro), considera como não resolvido
-                if (targetColor === null) return false;
-
-                // 2. Iterar sobre todas as 9 posições da face para verificar se correspondem à cor alvo
                 const otherAxes = ['x', 'y', 'z'].filter(ax => ax !== face.axis);
-                for (let i = -1; i <= 1; i++) {
-                    for (let j = -1; j <= 1; j++) {
+                let targetColor = null;
+
+                // Para um cubo 2x2, iteramos sobre as 4 peças de uma face
+                for (let i = -1; i <= 1; i += 2) {
+                    for (let j = -1; j <= 1; j += 2) {
                         const piecePosition = new THREE.Vector3();
                         piecePosition[face.axis] = face.layer;
                         piecePosition[otherAxes[0]] = i;
@@ -771,7 +759,11 @@ function animateRotation(slice, axis, angle, onComplete) {
                         const piece = getPieceAt(piecePosition);
                         const pieceColor = getFaceColor(piece, face.normal);
 
-                        // Se qualquer cor de peça não corresponder à cor alvo, o cubo não está resolvido
+                        if (targetColor === null) {
+                            targetColor = pieceColor;
+                        }
+
+                        // Se a cor de qualquer peça não corresponder à cor alvo, o cubo não está resolvido
                         if (pieceColor !== targetColor) {
                             return false;
                         }
@@ -952,11 +944,12 @@ function animateRotation(slice, axis, angle, onComplete) {
                     const axes = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
                     const axis = axes[Math.floor(Math.random() * axes.length)];
 
-                    const sliceIndices = [-1, 0, 1];
+                    const sliceIndices = [-1, 1]; // Only outer layers for a 2x2 cube
                     const sliceIndex = sliceIndices[Math.floor(Math.random() * sliceIndices.length)];
 
                     // Posição para selecionar a fatia
-                    const position = axis.clone().multiplyScalar(sliceIndex * totalSize);
+                    const offset = (pieceSize + gap) / 2;
+                    const position = axis.clone().multiplyScalar(sliceIndex * offset);
 
                     const slice = getSlice(axis, position);
 
@@ -988,12 +981,13 @@ function animateRotation(slice, axis, angle, onComplete) {
 
             // Retorna as peças para a posição e rotação originais
             const identityQuaternion = new THREE.Quaternion();
+            const offset = (pieceSize + gap) / 2;
             piecesGroup.children.forEach(piece => {
                 const idCoords = piece.userData.id.split('_').map(Number);
                 const originalPosition = new THREE.Vector3(
-                    idCoords[0] * totalSize,
-                    idCoords[1] * totalSize,
-                    idCoords[2] * totalSize
+                    idCoords[0] * offset,
+                    idCoords[1] * offset,
+                    idCoords[2] * offset
                 );
                 piece.position.copy(originalPosition);
                 piece.quaternion.copy(identityQuaternion);
